@@ -1,0 +1,620 @@
+
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwipeTheSlay - India’s Largest Dating Dictionary</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      background: #000000; /* Extreme Black */
+      background-image: linear-gradient(rgba(255, 255, 255, 0.15) 2px, transparent 2px),
+                       linear-gradient(90deg, rgba(255, 255, 255, 0.15) 2px, transparent 2px);
+      background-size: 40px 40px; /* Big Checkered Design */
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      overflow-x: hidden;
+    }
+    .term-box {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: 2px solid #fff;
+      border-radius: 12px;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, var(--color-start), var(--color-end));
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    }
+    .term-box:hover {
+      transform: scale(1.05);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.7);
+    }
+    .emoji {
+      font-size: 1.5rem;
+      margin-right: 0.5rem;
+    }
+    .title {
+      color: #ff1493; /* Strong hot pink */
+      text-shadow: 0 0 8px #ff1493, 0 0 15px #ff1493; /* Subtle pink glow */
+      font-size: 3.5rem; /* Slightly larger */
+      font-weight: 900; /* Bolder */
+      line-height: 1.2;
+    }
+    .intro-text {
+      background: linear-gradient(135deg, #ff2d95, #ff9500);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .term-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    .term-def {
+      font-size: 1rem;
+      color: #e0e0e0;
+    }
+    .slang-corner, .story-box {
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      border: 2px dashed #fff;
+      border-radius: 12px;
+      padding: 1.5rem; /* Adjusted for mobile */
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .insta-link, .story-button, .donate-button {
+      transition: transform 0.3s ease;
+      padding: 0.75rem 1.5rem; /* Larger tap target */
+    }
+    .insta-link:hover, .story-button:hover, .donate-button:hover {
+      transform: scale(1.1);
+    }
+    .insta-link {
+      color: #f9a8d4;
+      font-weight: bold;
+    }
+    .story-button, .donate-button {
+      background: linear-gradient(135deg, #ff2d95, #a855f7);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: bold;
+    }
+    /* Welcome heart animation */
+    .heart-welcome {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      animation: fadeOut 3s forwards;
+    }
+    .heart {
+      font-size: 10rem; /* Larger heart */
+      animation: fadeInOut 3s ease-out forwards;
+    }
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(1.0); }
+      100% { opacity: 0; transform: scale(1.5); }
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+    .underline-single {
+      text-decoration: underline;
+      text-decoration-color: #ff2d95;
+    }
+    .underline-double {
+      text-decoration: underline;
+      text-decoration-style: double;
+      text-decoration-color: #a855f7;
+    }
+    /* Mobile-specific adjustments */
+    @media (max-width: 640px) {
+      .title {
+        font-size: 2.5rem;
+        text-shadow: 0 0 6px #ff1493, 0 0 10px #ff1493; /* Adjusted for mobile */
+      }
+      .heart {
+        font-size: 8rem; /* Slightly smaller for mobile */
+      }
+      .intro-text {
+        font-size: 1.5rem;
+      }
+      .term-box {
+        padding: 1rem;
+      }
+      .term-title {
+        font-size: 1.1rem;
+      }
+      .term-def {
+        font-size: 0.9rem;
+      }
+      .story-box, .slang-corner {
+        padding: 1rem;
+        margin: 1rem 0.5rem;
+      }
+      .story-button, .insta-link {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+      }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start py-6 px-4 sm:px-6 relative">
+  <!-- Welcome Heart Animation -->
+  <div class="heart-welcome" aria-hidden="true">
+    <span class="heart">💖</span>
+  </div>
+
+  <!-- Website Title -->
+  <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold title tracking-tight mb-6" role="heading" aria-level="1">
+    SwipeTheSlay! <span class="emoji">😈🔥💖</span>
+  </h1>
+
+  <!-- Introduction -->
+  <div class="max-w-4xl text-center mb-10" role="region" aria-label="Introduction">
+    <h2 class="text-2xl sm:text-3xl md:text-4xl font-semibold intro-text mb-6">India’s <span class="underline-single">Cheesiest</span> Dating Dictionary to Slay Your Love Game! <span class="emoji">🌶️😍🔥</span></h2>
+    <div class="text-base sm:text-lg md:text-xl text-gray-100 leading-relaxed space-y-4">
+      <p><strong>Problem: Dating is a <span class="underline-double">steamy</span>, heart-pounding <span class="underline-single">bawaal</span>!</strong> <span class="emoji">💥</span></p>
+      <ul class="list-none text-left mx-auto max-w-2xl space-y-4">
+        <li>🔥 <span class="font-semibold">Fried</span> from swiping till your fingers are <span class="italic">masala</span>-burned, only to get ghosted by a Gulaab Jamun Guy whose sweet lines are cheesier than a <span class="italic">paneer-stuffed</span> naan? <span class="emoji">🧀😵‍💫</span></li>
+        <li>💦 <span class="font-semibold">Single</span> and soaked in a textationship wetter than a Gurgaon monsoon but thirstier than a date with no chai? <span class="emoji">☔💔</span></li>
+        <li>😘 <span class="font-semibold">Parched</span> for clarity when that 😘 emoji hits your DMs, but stuck wondering if it’s textual tension or a wokefisher serving fake pyaar like a stale samosa? <span class="emoji">😏🤔</span></li>
+        <li>🏃‍♂️ <span class="font-semibold">Exhausted</span> from dodging aunty’s rishta radar at every shaadi while chasing a sneakylink who makes your heart race faster than a 2 AM biryani run? <span class="emoji">🍛🏃‍♂️</span></li>
+        <li>🧟‍♀️ <span class="font-semibold">Sinking</span> in situationships that fizzle like a damp Diwali sparkler, fexting fights hotter than a tadka meltdown, or zombies slinking back from your WhatsApp graveyard with a cringey “Hey, cutie”? <span class="emoji">🧟‍♀️😬</span></li>
+        <li>🙄 <span class="font-semibold">Done</span> with beige flags—like “I love Netflix” bios that scream yawn—or yap-trappers who monologue longer than a Shah Rukh Khan speech in DDLJ? <span class="emoji">🙄🎥</span></li>
+      </ul>
+      <p class="mt-6"><strong>Solution: SwipeTheSlay’s Here to Serve Cheesy Love Vibes That’ll <span class="underline-single">Melt</span> You!</strong> <span class="emoji">💦💘</span></p>
+      <p>“<em>Kabhi kabhi jeetne ke liye kuch haar bhi jaana padta hai</em>” (DDLJ vibes, fam!) Slide into SwipeTheSlay, India’s largest Dating Dictionary, dishing <span class="underline-double">115+ terms</span> to decode the sizzling chaos of Gen-Z and Millennial pyaar. From jalebi jitters that make your heart do a Bollywood thumka to kundali connects that align your stars like a Karan Johar love story, we’ve got the slang to keep your love game hotter than a fresh dosa off the tawa. “<em>Bade bade deshon mein aisi chhoti chhoti baatein hoti rehti hai</em>” (DDLJ energy!) Whether you’re sparking or dodging catfishers, we’re your flirty, mushy guide to slaying the desi dating scene. “<em>Picture abhi baaki hai, mere dost</em>” (Om Shanti Om vibes!) Ready to drip with confidence, melt over those vibe checks, and find a pyaar so lit it’s a Yash Raj blockbuster? “<em>Hum ek baar jeete hain, ek baar marte hain, aur pyar bhi ek baar hi hota hai</em>” (Mohabbatein energy!) Let’s make your love story pop off like a masala-filled rom-com with extra cheese! <span class="emoji">😈🔥💖</span></p>
+    </div>
+  </div>
+
+  <!-- Dating Story -->
+  <div id="story" class="story-box max-w-4xl text-left" role="region" aria-label="Dating Story">
+    <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-4">The Scorching Insta-Love of Daksh 🕺🏻 & Dhruvi 💃</h3>
+    <p class="text-base sm:text-lg text-gray-100 leading-relaxed">
+      Yo, Gen-Z squad, grab your chai and vibe with a Gurgaon love story that’s hotter than a pani puri pop and dripping with so much rizz it’s basically a Bollywood banger gone viral! This ain’t your nani’s rishta game—it’s Daksh and Dhruvi’s desi love story, coded in pyaar, wrapped in masala, and served with main character energy! 😈🔥
+
+      Meet Daksh 🕺🏻, a tech bro building tech in Gurgaon’s startup scene, once a CA student who ditched balance sheets for blockchain dreams, bio dripping, “Code hard, love harder.” This king of startups, Web3, and crypto codes apps faster than you can say “swipe right,” with a smirk that screams bad boi charm. Then there’s Dhruvi 💃🏻, a fashion influencer whose Insta reels hit harder than a Bhaijaan box office drop, serving lewks that scream desi Barbie and vibes that make Cyber Hub quake. 💅✨
+
+      Their meet-cute? A lit Insta moment when Daksh heart-eyed Dhruvi’s Diwali reel—lehenga twirling, Badtameez Dil blasting, pure slay. He slid into her DMs with, “Girl, your vibe’s got more spark than a Diwali phuljhadi.” Dhruvi, all queen energy, hit back with, “Only if your heart’s got that desi NFT glow, tech bro.” Their chats? Pure Jab We Met fire, with Dhruvi purring, “Tumhe dekha toh yeh khayal aaya,” and Daksh dropping a flirty emoji storm that had Dil To Pagal Hai energy. 😘⚡️ The tension? So electric it could power Gurgaon’s neon skyline. 🔥
+
+      Dhruvi in a shimmery lehenga serving Sabyasachi seduction, her curves catching the neon glow. Daksh, in a kurta that hugged his gym-bro build, pulled thumkas to Tareefan like he’s starring in Rockstar. Their chemistry? So steamy it fogged up the skyline, with Dhruvi’s flirty wink and Daksh’s low whisper, “Tum dil mein aaye, aur dil dhadka.” Their dance? A Garmi-fueled tangle, hands brushing, hearts racing, Insta reel captioned, “Hum tum mein itne chhed karenge, ke algorithm bhi blush karega!” 😏💥 A catfish tried to creep in with fake SRK vibes, but Daksh’s kundali connect app (coded in a weekend, obvi) aligned their stars like a Yash Chopra climax. 💫
+
+      Their love sealed over a golgappa date, Dhruvi’s lips teasing the spicy pani as she purred, “Tujh mein rab dikhta hai” (Rab Ne Bana Di Jodi energy). Daksh, feeding her a golgappa, leaned in close, whispering, “Tum meri reel ho, aur main tera director.” Their FBO Insta post? A Cyber Hub selfie—Dhruvi’s kohl-rimmed eyes locked on Daksh’s smirk—captioned, “Bade bade Gurgaon mein aisi chhoti chhoti love stories,” blowing up with likes faster than a Vogue India drop. 🚖💖
+    </p>
+  </div>
+
+  <!-- Share Story Button -->
+  <div id="share" class="max-w-4xl text-center mb-2" role="region" aria-label="Share Your Story">
+    <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-3">Join the Pyaar Party! 💑🔥</h3>
+    <p class="text-base sm:text-lg text-gray-100 mb-6">
+      Got a masala-filled dating saga like Daksh 😎 & Dhruvi 💃? Drop your spicy tale and let’s make the internet dhak! “<em>Koi pyar kare toh dil se dil tak jaye</em>” (Kuch Kuch Hota Hai energy!) <span class="emoji">💌</span>
+    </p>
+    <a href="https://forms.gle/QX8x5CYgiaK6RcJy6" class="story-button inline-block mb-4" aria-label="Submit your dating story">Drop Your Love Saga!</a>
+  </div>
+
+  <!-- Alphabetical Term Boxes -->
+  <div id="terms" class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8" role="region" aria-label="Dating Terms">
+    <!-- Spark A -->
+    <div class="term-box" style="--color-start: #ff2d95; --color-end: #a855f7;" role="article" aria-label="Spark A Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Sparkster A ✨</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Algorithm Fatigue 🌪️</span><span class="term-def">Swipe burnout from repetitive profiles—*done.</span></li>
+        <li><span class="term-title">Arranged Dating 💍</span><span class="term-def">Desi dating with apps, parents in WhatsApp.</span></li>
+        <li><span class="term-title">Astrolove 🌟</span><span class="term-title">Astrolove 🌟</span><span class="term-def">Picking bae via zodiac—stars align.</span></li>
+        <li><span class="term-title">App Overload 😵</span><span class="term-def">Too many dating apps—swipe chaos.</span></li>
+        <li><span class="term-title">Aunty Vibes 🚨</span><span class="term-def">Aunties sniffing with rishta shenanigans.</span></li>
+        <li><span class="term-title">Auto-Swipe Addiction 🚀</span><span class="term-def">Swiping right on all—pure chaos.</span></li>
+      </ul>
+    </div>
+
+    <!-- Bae B -->
+    <div class="term-box" style="--color-start: #ef4444; --color-end: #f97316;" role="article" aria-label="Bae B Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Bae B 😎💖</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Beige Flags 😴</span><span class="term-def">Boring traits—“I like food” bios.</span></li>
+        <li><span class="term-title">Benching 🕸</span><span class="term-def">Keeping bae as backup—shady.</span></li>
+        <li><span class="term-title">BFF Mode 👯</span><span class="term-def">Platonic pal finder—no romance.</span></li>
+        <li><span class="term-title">Bio Bloopers 🤖</span><span class="term-def">Cringing bios—“Fluent in sarcasm.”</span></li>
+        <li><span class="term-title">Breadcrumbing 🍰</span><span class="term-def">Flirty texts, no commitment.</span></li>
+        <li><span class="term-title">Biryani Bae 🍗</span><span class="term-def">Foodie match with biryani love.</span></li>
+        <li><span class="term-title">Bollywood Banshee 🎬</span><span class="term-def">SRK poses to charm matches.</span></li>
+        <li><span class="term-title">Burner Bae 📴</span><span class="term-def">Lowkey profile—sneaky swipes.</span></li>
+      </ul>
+    </div>
+
+    <!-- Crush C -->
+    <div class="term-box" style="--color-start: #a855f7; --color-end: #3b82f6;" role="article" aria-label="Crush C Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Crush C 😽</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Catfish 🎡</span><span class="term-def">Fake identity—shady AF.</span></li>
+        <li><span class="term-title">Chameleoning 🦎</span><span class="term-def">Faking personality for vibes.</span></li>
+        <li><span class="term-title">Chemistry Check ☕</span><span class="term-def">IRL spark test—vibe check.</span></li>
+        <li><span class="term-title">Cookie Craze 🍪</span><span class="term-def">Stashing backup matches—sneaky.</span></li>
+        <li><span class="term-title">Cuddle Crew 💕</span><span class="term-def">Cozy date—consent first.</span></li>
+        <li><span class="term-title">Cuffing Season ❄️</span><span class="term-def">Festive temp pairing.</span></li>
+        <li><span class="term-title">Cushioning 🛏️</span><span class="term-def">Side matches—safety net.</span></li>
+        <li><span class="term-title">Chai Charmer ☕</span><span class="term-def">Chai date—desi sizzle.</span></li>
+        <li><span class="term-title">Curtain Call 📞</span><span class="term-def">Last-ditch call to save a fading match.</span></li>
+      </ul>
+    </div>
+
+    <!-- Drip D -->
+    <div class="term-box" style="--color-start: #f472b6; --color-end: #ef4444;" role="article" aria-label="Drip D Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Drip D 💧</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Daterview 💼</span><span class="term-def">Date like a job interview—yawn.</span></li>
+        <li><span class="term-title">DBL (Digital Body Language) 📱</span><span class="term-def">Text vibes—emojis, speed.</span></li>
+        <li><span class="term-title">Delusionship 😇</span><span class="term-def">Fantasy love—not real.</span></li>
+        <li><span class="term-title">Desi Date 🇮🇳</span><span class="term-def">Indian culture date—samosas.</span></li>
+        <li><span class="term-title">DINK (Dual Income, No Kids) 💰</span><span class="term-def">Cash-rich, kid-free couples.</span></li>
+        <li><span class="term-title">DTR (Define The Relationship) 💬</span><span class="term-def">Exclusive or casual talk.</span></li>
+        <li><span class="term-title">Dhokha Drama 😢</span><span class="term-def">Betrayal—desi heartbreak.</span></li>
+        <li><span class="term-title">Dosa Daze 🥞</span><span class="term-def">Crispy dosa date—South Indian pyaar.</span></li>
+        <li><span class="term-title">Dry Texter 📴</span><span class="term-def">One-word replies—vibes killer.</span></li>
+      </ul>
+    </div>
+
+    <!-- Emoji E -->
+    <div class="term-box" style="--color-start: #3b82f6; --color-end: #14b8a6;" role="article" aria-label="Emoji E Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Emoji Explosion 😍</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Emoji Extravaganza 😘</span><span class="term-def">😘 or 🔥 for spicy chats.</span></li>
+        <li><span class="term-title">Enmeshment 🤝</span><span class="term-def">Boundary-blur relationship.</span></li>
+        <li><span class="term-title">Ex-Factor 😈</span><span class="term-def">Ex sliding back—drama.</span></li>
+        <li><span class="term-title">Eye-Candy Effect 😍</span><span class="term-def">Falling for profile pics.</span></li>
+        <li><span class="term-title">Ego Swiper 😎</span><span class="term-def">Swiping for validation.</span></li>
+        <li><span class="term-title">E-Fizzle 📉</span><span class="term-def">Online spark dies before meeting.</span></li>
+      </ul>
+    </div>
+
+    <!-- Fire F -->
+    <div class="term-box" style="--color-start: #f97316; --color-end: #f472b6;" role="article" aria-label="Fire F Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Fire F 🔥</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">FBO (Fire-Burst Official) 📸</span><span class="term-def">Public relationship—desi flex.</span></li>
+        <li><span class="term-title">Fexting Frenzy 😈</span><span class="term-def">Text fights—WhatsApp wars.</span></li>
+        <li><span class="term-title">Fleabagging 🦴</span><span class="term-def">Wrong type, repeat—toxic.</span></li>
+        <li><span class="term-title">Fizzling 😶</span><span class="term-def">Connection fades—no ghost.</span></li>
+        <li><span class="term-title">Freaky Matchers 🤪</span><span class="term-def">Vibing with quirky matches.</span></li>
+        <li><span class="term-title">Freckling 🎄</span><span class="term-def">Festive fling—fades fast.</span></li>
+        <li><span class="term-title">Filmi Fever 🎥</span><span class="term-def">Bollywood romance—tree confessions.</span></li>
+        <li><span class="term-title">Filter Flopper 📸</span><span class="term-def">Excessive filters—fake vibes.</span></li>
+      </ul>
+    </div>
+
+    <!-- Glow G -->
+    <div class="term-box" style="--color-start: #14b8a6; --color-end: #a855f7;" role="article" aria-label="Glow G Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Glow G 🌟</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Ghosting 👻</span><span class="term-def">Vanishing—left on read.</span></li>
+        <li><span class="term-title">Groundhogging 🔄</span><span class="term-def">Same type, repeat—stuck.</span></li>
+        <li><span class="term-title">Gulaab Jamun Guru 🥟</span><span class="term-def">Cheesy sweet lines—cringe-cute.</span></li>
+        <li><span class="term-title">Golgappa Goals 🥟</span><span class="term-def">Spicy food date—desi pyaar.</span></li>
+        <li><span class="term-title">Gurugram Glitch 📍</span><span class="term-def">App bugs—wrong matches.</span></li>
+        <li><span class="term-title">Glitchy Spark ⚡️</span><span class="term-def">Match with on-off chemistry.</span></li>
+      </ul>
+    </div>
+
+    <!-- Heart H -->
+    <div class="term-box" style="--color-start: #ff2d95; --color-end: #ef4444;" role="article" aria-label="Heart H Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Heart H 💓</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Hinge Hottie 📱</span><span class="term-def">Real connections—lit pyaar.</span></li>
+        <li><span class="term-title">Horoscope Hype 🌌</span><span class="term-def">Zodiac chats—desi style.</span></li>
+        <li><span class="term-title">Hookup Haze 😶‍🌫️</span><span class="term-def">Post-fling blur—what’s next?</span></li>
+        <li><span class="term-title">Haldi Hottie 💛</span><span class="term-def">Flirty wedding haldi sparks.</span></li>
+        <li><span class="term-title">Heart Skipper 💗</span><span class="term-def">Butterflies from a flirty text.</span></li>
+      </ul>
+    </div>
+
+    <!-- Insta I -->
+    <div class="term-box" style="--color-start: #3b82f6; --color-end: #f97316;" role="article" aria-label="Insta I Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Insta I 📷</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Ick 😱</span><span class="term-def">Turn-off from small habit.</span></li>
+        <li><span class="term-title">InstaCrush 😘</span><span class="term-def">Fire reels spark pre-match love.</span></li>
+        <li><span class="term-title">Intentional Dating 🎯</span><span class="term-def">Clear goals—casual or serious.</span></li>
+        <li><span class="term-title">IRL Igniter ⚡</span><span class="term-def">Sparks at sangeet—offline.</span></li>
+        <li><span class="term-title">Insta Ignorer 👀</span><span class="term-def">Ignoring reel-only DMs.</span></li>
+      </ul>
+    </div>
+
+    <!-- Jalebi J -->
+    <div class="term-box" style="--color-start: #f472b6; --color-end: #14b8a6;" role="article" aria-label="Jalebi J Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Jalebi J 🌀</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Jalebi Jitters 🌀</span><span class="term-def">Nervous date buzz—twisty.</span></li>
+        <li><span class="term-title">Just Vibin’ 😎</span><span class="term-def">Chill, no-label vibe.</span></li>
+        <li><span class="term-title">Jhatka Jiver 😜</span><span class="term-def">Bold flirt—catches off-guard.</span></li>
+        <li><span class="term-title">Jugaad Jolt 🛠️</span><span class="term-def">Last-minute date—desi hustle.</span></li>
+        <li><span class="term-title">Jodi Juggler 🤹</span><span class="term-def">Balancing multiple matches—risky.</span></li>
+      </ul>
+    </div>
+
+    <!-- Kiss K -->
+    <div class="term-box" style="--color-start: #ef4444; --color-end: #ff2d95;" role="article" aria-label="Kiss K Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Kiss K 💋</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Kissmet 💫</span><span class="term-def">Fated rom-com meet-cute.</span></li>
+        <li><span class="term-title">KittenFish 🐱</span><span class="term-def">Small lies—fudging height.</span></li>
+        <li><span class="term-title">Kundali Connect 🌟</span><span class="term-def">Astro-match—desi dealbreaker.</span></li>
+        <li><span class="term-title">Kool-Aid Kiss 😘</span><span class="term-def">Playful, light flirt kiss.</span></li>
+      </ul>
+    </div>
+
+    <!-- Love L -->
+    <div class="term-box" style="--color-start: #a855f7; --color-end: #3b82f6;" role="article" aria-label="Love L Terms">
+      <h3 class="text-2xl sm:text-3xl font-bold text-white mb-4">Love L 💘</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">LoveBomber 💣</span><span class="term-def">Over-the-top love—shady.</span></li>
+        <li><span class="term-title">LoveHaze 😍</span><span class="term-def">Smitten, blind to flaws.</span></li>
+        <li><span class="term-title">Lowkey Lovin’ 🕶️</span><span class="term-def">Secret romance—family dodge.</span></li>
+        <li><span class="term-title">Ladka/Ladki Lure 😎</span><span class="term-def">Desi charm pulls flirty.</span></li>
+        <li><span class="term-title">Lingering Like 👀</span><span class="term-def">Stalking match’s stories post-unmatch.</span></li>
+      </ul>
+    </div>
+
+    <!-- Masala M -->
+    <div class="term-box" style="--color-start: #14b8a6; --color-end: #f472b6;" role="article" aria-label="Masala M Terms">
+      <h3 class="text-2xl sm:text-3xl font-bold text-white mb-4">Masala M 🌮</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Matchmaker Momo 🧙‍♀️</span><span class="term-def">Squad/fam play cupid.</span></li>
+        <li><span class="term-title">Meme-Muncher 🤓</span><span class="term-def">SRK GIFs, desi humor bond.</span></li>
+        <li><span class="term-title">Micro-Mancer 💌</span><span class="term-def">Cute gestures—playlists.</span></li>
+        <li><span class="term-title">Monsoon Mosh 🌧️</span><span class="term-def">Rainy chai date—romance.</span></li>
+        <li><span class="term-title">Maggi Maniac 🍜</span><span class="term-def">Maggi date—desi comfort.</span></li>
+        <li><span class="term-title">Misfire Match 🚫</span><span class="term-def">Match with zero spark—awkward.</span></li>
+      </ul>
+    </div>
+
+    <!-- Naughty N -->
+    <div class="term-box" style="--color-start: #f97316; --color-end: #ef4444;" role="article" aria-label="Naughty N Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Naughty N 😈</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">NRI Net ✈️</span><span class="term-def">Long-distance NRI matches.</span></li>
+        <li><span class="term-title">No-Swipe Sizzler ⚡</span><span class="term-def">IRL sparks—wedding vibes.</span></li>
+        <li><span class="term-title">Nawab Nudger 😎</span><span class="term-def">Smooth desi flirt charm.</span></li>
+        <li><span class="term-title">Nakhra Ninja 🧝‍♀️</span><span class="term-def">Playful desi tease—match.</span></li>
+        <li><span class="term-title">Nervy Nudge 😬</span><span class="term-def">Anxious pre-date DM—shaky vibes.</span></li>
+      </ul>
+    </div>
+
+    <!-- Orbit O -->
+    <div class="term-box" style="--color-start: #ff2d95; --color-end: #a855f7;" role="article" aria-label="Orbit O Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Orbit O 🪐</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Orbiting 👀</span><span class="term-def">Lurking post-ghost—creepy.</span></li>
+        <li><span class="term-title">OTP (One True Pyaar) 💑</span><span class="term-def">Perfect couple—#Goals.</span></li>
+        <li><span class="term-title">Over-Swipe OD 😵‍💫</span><span class="term-def">Swiping chaos—lost track.</span></li>
+        <li><span class="term-title">Oye-Hoye Obsessor 😍</span><span class="term-def">Crushing after one chat.</span></li>
+      </ul>
+    </div>
+
+    <!-- Pyaar P -->
+    <div class="term-box" style="--color-start: #3b82f6; --color-end: #14b8a6;" role="article" aria-label="Pyaar P Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Pyaar P 😘</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Pocketing 🕳️</span><span class="term-def">Hiding bae—secret vibes.</span></li>
+        <li><span class="term-title">Profile Polisher ✨</span><span class="term-def">Sprucing up profile—pics.</span></li>
+        <li><span class="term-title">Pyaar Pause ⏳</span><span class="term-def">Break from dating—burnout.</span></li>
+        <li><span class="term-title">Pav Bhaji Passion 🍲</span><span class="term-def">Street food date—spicy.</span></li>
+        <li><span class="term-title">Pind Popper 🕺</span><span class="term-def">Dhaba date—village pyaar.</span></li>
+        <li><span class="term-title">Ping Ponger 🏓</span><span class="term-def">Back-and-forth flirty texts—teasing.</span></li>
+      </ul>
+    </div>
+
+    <!-- Rishta R -->
+    <div class="term-box" style="--color-start: #ef4444; --color-end: #f97316;" role="article" aria-label="Rishta R Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Rishta R 📡</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Rishta Radar 📡</span><span class="term-def">Aunty matchmaker—scanning.</span></li>
+        <li><span class="term-title">Roaching 🪳</span><span class="term-def">Hiding multiple dates.</span></li>
+        <li><span class="term-title">Reel Romancer 📷</span><span class="term-def">Insta reels flirt—digital.</span></li>
+        <li><span class="term-title">Rishta Roaster</span><span class="term-def">Family teases prospects.</span></li>
+      </ul>
+    </div>
+
+    <!-- Spark S -->
+    <div class="term-box" style="--color-start: #a855f7; --color-end: #ff2d95;" role="article" aria-label="Spark S Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Spark S ⚡️</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Situationship ❓</span><span class="term-def">Messy—not friends/dating.</span></li>
+        <li><span class="term-title">Slow Swiper 🐢</span><span class="term-def">Chill real connections.</span></li>
+        <li><span class="term-title">Sneakylink 🤳</span><span class="term-def">Secret fling—hush.</span></li>
+        <li><span class="term-title">Soft Launcher 📷</span><span class="term-def">Subtle bae social media.</span></li>
+        <li><span class="term-title">Sparker ⚡</span><span class="term-def">SuperLike—super into bae.</span></li>
+        <li><span class="term-title">StICK-ing 😣</span><span class="term-def">Staying despite cringe.</span></li>
+        <li><span class="term-title">Swamper 😵</span><span class="term-def">Unfiltered self—PJs, pimples.</span></li>
+        <li><span class="term-title">Samosa Sizzler 🍟</span><span class="term-def">Spicy date—samosas.</span></li>
+        <li><span class="term-title">Shaadi Shaker 💃</span><span class="term-def">Wedding match chaos.</span></li>
+        <li><span class="term-title">Swipe Surge 🌊</span><span class="term-def">Sudden mass swiping—frenzy mode.</span></li>
+      </ul>
+    </div>
+
+    <!-- Thumka T -->
+    <div class="term-box" style="--color-start: #14b8a6; --color-end: #3b82f6;" role="article" aria-label="Thumka T Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Thumka T 💃</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Textationship 💬</span><span class="term-def">All-text—no IRL.</span></li>
+        <li><span class="term-title">Textual Tension 🔥</span><span class="term-def">Spicy chats—hooked.</span></li>
+        <li><span class="term-title">Throner 👑</span><span class="term-def">Dating for Insta clout—flex.</span></li>
+        <li><span class="term-title">Trusty Score ✅</span><span class="term-def">Anti-catfish verification.</span></li>
+        <li><span class="term-title">Tadka Teaser 🌶️</span><span class="term-def">Desi flirty *masala*.</span></li>
+        <li><span class="term-title">Thali Thriller 🍽️</span><span class="term-def">Thali date—foodie pyaar.</span></li>
+        <li><span class="term-title">Tinder Tantrum 😣</span><span class="term-def">Meltdown over bad matches.</span></li>
+      </ul>
+    </div>
+
+    <!-- Unmatch U -->
+    <div class="term-box" style="--color-start: #f97316; --color-end: #f472b6;" role="article" aria-label="Unmatch U Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Unmatch U 😱</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Unmatch Uproar 😩</span><span class="term-def">Post-unmatch chaos.</span></li>
+        <li><span class="term-title">Underdog Urge 🐶</span><span class="term-def">Quiet match vibes.</span></li>
+        <li><span class="term-title">Unseen Undo 😶</span><span class="term-def">Regret unmatch—late.</span></li>
+        <li><span class="term-title">Unvibed Union 🚫</span><span class="term-def">Match with clashing energies.</span></li>
+      </ul>
+    </div>
+
+    <!-- Vibe V -->
+    <div class="term-box" style="--color-start: #ff2d95; --color-end: #ef4444;" role="article" aria-label="Vibe V Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Vibe V 😎</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Vibe Checker ✅</span><span class="term-def">Test match energy.</span></li>
+        <li><span class="term-title">Vision Board Vibe 🎨</span><span class="term-def">Goals profile.</span></li>
+        <li><span class="term-title">Virtual Vibe 💻</span><span class="term-def">Zoom spark—pre-IRL.</span></li>
+        <li><span class="term-title">Vada Pav Vibe 🍔</span><span class="term-def">Street food date.</span></li>
+        <li><span class="term-title">Vanishing Vow 🕳️</span><span class="term-def">Promising match ghosts—poof.</span></li>
+      </ul>
+    </div>
+
+    <!-- Woo W -->
+    <div class="term-box" style="--color-start: #3b82f6; --color-end: #a855f7;" role="article" aria-label="Woo W Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Woo W 💍</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Wifed Up 💑</span><span class="term-def">Committed—bae first.</span></li>
+        <li><span class="term-title">Wokefisher 🐟</span><span class="term-def">Fake progressive—shady.</span></li>
+        <li><span class="term-title">Woo-Worthier 😍</span><span class="term-def">Impress dope match.</span></li>
+        <li><span class="term-title">WhatsApp Whirler 📲</span><span class="term-def">Fast texts—chaos.</span></li>
+        <li><span class="term-title">Wedding Whizzer 💃</span><span class="term-def">Shaadi sparks—match.</span></li>
+        <li><span class="term-title">Wobbly Woo 😵</span><span class="term-def">Flirting but unsure—mixed signals.</span></li>
+      </ul>
+    </div>
+
+    <!-- Yeet Y -->
+    <div class="term-box" style="--color-start: #14b8a6; --color-end: #f97316;" role="article" aria-label="Yeet Y Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Yeet Y 😬</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Yap-Trapper 🗣️</span><span class="term-def">One-sided chat—endless talk.</span></li>
+        <li><span class="term-title">YOLO Yawn 😜</span><span class="term-def">Risky date—‘cause why not?</span></li>
+        <li><span class="term-title">Yeh Dil Deewana 😘</span><span class="term-def">Craving filmy desi romance.</span></li>
+        <li><span class="term-title">Yearning Yo-Yo 💞</span><span class="term-def">On-off crush feelings—rollercoaster.</span></li>
+        <li><span class="term-title">Yielding Yes 🙌</span><span class="term-def">Saying yes to a risky date—vibes.</span></li>
+      </ul>
+    </div>
+
+    <!-- Zest Z -->
+    <div class="term-box" style="--color-start: #f472b6; --color-end: #ff2d95;" role="article" aria-label="Zest Z Terms">
+      <h3 class="text-2xl sm:text-3xl font-extrabold text-white mb-4">Zest Z 🧪</h3>
+      <ul class="space-y-4">
+        <li><span class="term-title">Zombified 🧟</span><span class="term-def">Ghoster returns with “Hey!”—ugh.</span></li>
+        <li><span class="term-title">Zoom Zinger 💻</span><span class="term-def">Virtual date with flirty vibes.</span></li>
+        <li><span class="term-title">Zindagi Zapper ✨</span><span class="term-def">Thriving on new pyaar thrills.</span></li>
+        <li><span class="term-title">Zany Zing 🤪</span><span class="term-def">Wild, quirky chemistry—crazy sparks.</span></li>
+        <li><span class="term-title">Zero-Zone Zap 🚫</span><span class="term-def">Match with no reply—dead end.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Slang Corner -->
+  <div id="slang" class="slang-corner max-w-4xl text-center" role="region" aria-label="Slang Corner">
+    <h3 class="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-3">Slang Corner: Spill the Masala! 🌶️🔥</h3>
+    <p class="text-base sm:text-lg text-gray-100 leading-relaxed">
+      Yo, ready to swerve those dating duds? 💃 Our Slang Corner’s serving the juiciest Gen-Z terms to keep your pyaar game <span class="underline-double">extra</span>! From sneakylinks 🤫 that got your heart racing to wokefishers 🦈 you gotta yeet, we’re spilling the chai on slaying the desi dating scene. Catch terms like <span class="font-semibold">Dhamaka DM</span> (a bold, flirty message that hits like a Diwali cracker 🎇), <span class="font-semibold">Chai Chaser</span> (someone obsessed with cozy chai dates ☕), <span class="font-semibold">Reel Rizzler</span> (a charmer whose Insta reels scream pyaar vibes 📹), and <span class="font-semibold">Bawaal Bae</span> (a match so chaotic it’s straight out of a Bollywood climax 🎬). “<em>Jab tak hai jaan, jab tak hai pyaar</em>” (JTHJ energy!) Peep these bawaal terms and vibe check your matches like a Biryani Bae! 😎💖 Follow us on Insta—“<em>Tum dil mein aaye, aur dil dhadka</em>” (Dil To Pagal Hai vibes!) 😘
+    </p>
+    <a href="https://www.instagram.com/swipetheslay/" class="insta-link inline-block mt-4 text-lg sm:text-xl" aria-label="Follow us on Instagram">Slide into our Insta for <span class="underline-single">dhak</span> pyaar vibes!</a>
+  </div>
+
+  <footer class="mt-6 text-center text-gray-100" role="contentinfo">
+    <p>© SwipeTheSlay. Slaying desi dating, one lit term at a time! <span class="emoji">😎💖🔥</span></p>
+    <p>“<em>Jab tak hai jaan, jab tak hai SwipeTheSlay!</em>” <span class="emoji">🎬</span></p>
+  </footer>
+
+  <script>
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+        try {
+          var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+          var firstSheetName = workbook.SheetNames[0];
+          var worksheet = workbook.Sheets[firstSheetName];
+          var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+          var filteredData = jsonData.filter(row => row.some(filledCell));
+          var headerRowIndex = filteredData.findIndex((row, index) => 
+            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+          );
+          if (headerRowIndex === -1 || headerRowIndex > 25) {
+            headerRowIndex = 0;
+          }
+          var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+          csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+          return csv;
+        } catch (e) {
+          console.error(e);
+          return "";
+        }
+      }
+      return gk_fileData[filename] || "";
+    }
+
+    // Scroll animation for term boxes
+    const termBoxes = document.querySelectorAll('.term-box');
+    window.addEventListener('scroll', () => {
+      termBoxes.forEach(box => {
+        const rect = box.getBoundingClientRect();
+        if (rect.top < window.innerHeight * 0.7) {
+          box.style.opacity = '1';
+          box.style.transform = 'translateY(0)';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
